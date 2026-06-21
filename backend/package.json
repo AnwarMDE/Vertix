@@ -1,0 +1,19 @@
+{
+  "name": "surebets-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API de surebets / arbitraje deportivo (Express + node:sqlite + JWT)",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "NODE_NO_WARNINGS=1 node src/index.js",
+    "dev": "NODE_NO_WARNINGS=1 node --watch src/index.js",
+    "seed": "NODE_NO_WARNINGS=1 node src/seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

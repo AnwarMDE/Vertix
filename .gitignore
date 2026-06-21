@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Builds
+dist/
+web/dist/
+.vite/
+.expo/
+
+# Nativo generado por Expo prebuild (se regenera con `npx expo prebuild`)
+mobile/ios/
+mobile/android/
+
+# Base de datos local y logs
+*.db
+*.db-shm
+*.db-wal
+**/server.log
+*.log
+
+# Entorno y SO
+.env
+.DS_Store

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 100" role="img" aria-label="Vertix">
+  <g transform="translate(8,2)">
+    <path d="M50 16 L50 32 L30 50 L20 40 Z" fill="#17a374"/>
+    <path d="M50 16 L80 40 L70 50 L50 32 Z" fill="#2bbd8c"/>
+    <path d="M50 54 L50 70 L30 88 L20 78 Z" fill="#0e7355"/>
+    <path d="M50 54 L80 78 L70 88 L50 70 Z" fill="#17a374"/>
+  </g>
+  <text x="112" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="52" font-weight="600" letter-spacing="-1" fill="currentColor"><tspan fill="#17a374">V</tspan>ertix</text>
+</svg>
