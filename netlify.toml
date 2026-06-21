@@ -6,10 +6,9 @@
   command = "npm run build"
   publish = "dist"
 
-# Antes de desplegar, define la URL pública del backend (Render).
-# Quita los # y pon tu URL (sin /api al final):
-# [build.environment]
-#   VITE_API_URL = "https://TU-BACKEND.onrender.com"
+# URL pública del backend (Render). La web la usa para llamar a la API.
+[build.environment]
+  VITE_API_URL = "https://vertix-dca9.onrender.com"
 
 [[redirects]]
   from = "/*"
