@@ -1,0 +1,17 @@
+# Despliegue de la web (PWA) en Netlify.
+# Con "base" definido, Netlify entra en web/ y construye solo:
+# NO hace falta rellenar "Base directory" ni "Build command" en la UI.
+[build]
+  base = "web"
+  command = "npm run build"
+  publish = "dist"
+
+# Antes de desplegar, define la URL pública del backend (Render).
+# Quita los # y pon tu URL (sin /api al final):
+# [build.environment]
+#   VITE_API_URL = "https://TU-BACKEND.onrender.com"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
