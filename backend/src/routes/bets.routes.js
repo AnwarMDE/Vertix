@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db.js';
+import { query, wrap } from '../db.js';
 import { authRequired } from '../auth.js';
 import { calcArbitrage } from '../arb.js';
 
@@ -14,25 +14,26 @@ function safeParse(s) {
 }
 
 // Listado con filtros opcionales (?from=YYYY-MM-DD&to=...&status=...)
-router.get('/', (req, res) => {
+router.get('/', wrap(async (req, res) => {
   const { from, to, status } = req.query;
-  let sql = 'SELECT * FROM bets WHERE user_id = ?';
+  let sql = 'SELECT * FROM bets WHERE user_id = $1';
   const params = [req.user.id];
-  if (from) { sql += ' AND placed_at >= ?'; params.push(String(from)); }
-  if (to) { sql += ' AND placed_at <= ?'; params.push(String(to)); }
-  if (status) { sql += ' AND status = ?'; params.push(String(status)); }
+  let i = 2;
+  if (from) { sql += ` AND placed_at >= $${i++}`; params.push(String(from)); }
+  if (to) { sql += ` AND placed_at <= $${i++}`; params.push(String(to)); }
+  if (status) { sql += ` AND status = $${i++}`; params.push(String(status)); }
   sql += ' ORDER BY placed_at DESC, id DESC';
-  const rows = db.prepare(sql).all(...params);
-  res.json({ bets: rows.map(parseBet) });
-});
+  const r = await query(sql, params);
+  res.json({ bets: r.rows.map(parseBet) });
+}));
 
-router.get('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM bets WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-  if (!row) return res.status(404).json({ error: 'Apuesta no encontrada' });
-  res.json({ bet: parseBet(row) });
-});
+router.get('/:id', wrap(async (req, res) => {
+  const r = await query('SELECT * FROM bets WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  if (!r.rows.length) return res.status(404).json({ error: 'Apuesta no encontrada' });
+  res.json({ bet: parseBet(r.rows[0]) });
+}));
 
-router.post('/', (req, res) => {
+router.post('/', wrap(async (req, res) => {
   const b = req.body || {};
   if (!b.event) return res.status(400).json({ error: 'El evento es obligatorio' });
   const legs = Array.isArray(b.legs) ? b.legs : [];
@@ -45,11 +46,12 @@ router.post('/', (req, res) => {
   const profitPct = b.profit_pct != null ? Number(b.profit_pct) : (calc ? calc.profitPctRealized : 0);
   const placedAt = b.placed_at || new Date().toISOString().slice(0, 10);
 
-  const info = db.prepare(`
+  const r = await query(`
     INSERT INTO bets
       (user_id, event, sport, market, legs, total_stake, expected_profit, profit_pct, status, actual_profit, placed_at, settled_at, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+    RETURNING *
+  `, [
     req.user.id,
     String(b.event),
     b.sport ? String(b.sport) : null,
@@ -62,16 +64,16 @@ router.post('/', (req, res) => {
     b.actual_profit != null ? Number(b.actual_profit) : null,
     String(placedAt),
     b.settled_at ? String(b.settled_at) : null,
-    b.notes ? String(b.notes) : null
-  );
+    b.notes ? String(b.notes) : null,
+  ]);
 
-  const row = db.prepare('SELECT * FROM bets WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ bet: parseBet(row) });
-});
+  res.status(201).json({ bet: parseBet(r.rows[0]) });
+}));
 
-router.patch('/:id', (req, res) => {
-  const row = db.prepare('SELECT * FROM bets WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-  if (!row) return res.status(404).json({ error: 'Apuesta no encontrada' });
+router.patch('/:id', wrap(async (req, res) => {
+  const cur = await query('SELECT * FROM bets WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  if (!cur.rows.length) return res.status(404).json({ error: 'Apuesta no encontrada' });
+  const row = cur.rows[0];
 
   const b = req.body || {};
   const fields = {};
@@ -96,17 +98,18 @@ router.patch('/:id', (req, res) => {
   const keys = Object.keys(fields);
   if (keys.length === 0) return res.json({ bet: parseBet(row) });
 
-  const setSql = keys.map((k) => `${k} = ?`).join(', ');
-  db.prepare(`UPDATE bets SET ${setSql} WHERE id = ?`).run(...keys.map((k) => fields[k]), row.id);
+  const setSql = keys.map((k, idx) => `${k} = $${idx + 1}`).join(', ');
+  const params = keys.map((k) => fields[k]);
+  params.push(row.id);
+  const upd = await query(`UPDATE bets SET ${setSql} WHERE id = $${keys.length + 1} RETURNING *`, params);
 
-  const updated = db.prepare('SELECT * FROM bets WHERE id = ?').get(row.id);
-  res.json({ bet: parseBet(updated) });
-});
+  res.json({ bet: parseBet(upd.rows[0]) });
+}));
 
-router.delete('/:id', (req, res) => {
-  const info = db.prepare('DELETE FROM bets WHERE id = ? AND user_id = ?').run(req.params.id, req.user.id);
-  if (info.changes === 0) return res.status(404).json({ error: 'Apuesta no encontrada' });
+router.delete('/:id', wrap(async (req, res) => {
+  const r = await query('DELETE FROM bets WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  if (r.rowCount === 0) return res.status(404).json({ error: 'Apuesta no encontrada' });
   res.json({ ok: true });
-});
+}));
 
 export default router;

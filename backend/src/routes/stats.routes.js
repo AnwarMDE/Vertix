@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db } from '../db.js';
+import { query, wrap } from '../db.js';
 import { authRequired } from '../auth.js';
 
 const router = Router();
@@ -15,8 +15,9 @@ function effectiveProfit(b) {
   return b.actual_profit != null ? b.actual_profit : b.expected_profit;
 }
 
-router.get('/summary', (req, res) => {
-  const rows = db.prepare('SELECT * FROM bets WHERE user_id = ?').all(req.user.id);
+router.get('/summary', wrap(async (req, res) => {
+  const r = await query('SELECT * FROM bets WHERE user_id = $1', [req.user.id]);
+  const rows = r.rows;
   const ym = new Date().toISOString().slice(0, 7);
 
   let totalProfit = 0, monthProfit = 0, totalStaked = 0, pending = 0, settled = 0, won = 0;
@@ -40,17 +41,15 @@ router.get('/summary', (req, res) => {
     monthProfit: round2(monthProfit),
     roi: totalStaked ? round2((totalProfit / totalStaked) * 100) : 0,
   });
-});
+}));
 
 // Agregado por día para un mes (?month=YYYY-MM)
-router.get('/calendar', (req, res) => {
+router.get('/calendar', wrap(async (req, res) => {
   const month = String(req.query.month || new Date().toISOString().slice(0, 7));
-  const rows = db
-    .prepare("SELECT * FROM bets WHERE user_id = ? AND substr(placed_at, 1, 7) = ?")
-    .all(req.user.id, month);
+  const r = await query('SELECT * FROM bets WHERE user_id = $1 AND substr(placed_at, 1, 7) = $2', [req.user.id, month]);
 
   const days = {};
-  for (const b of rows) {
+  for (const b of r.rows) {
     const d = b.placed_at;
     if (!days[d]) days[d] = { date: d, profit: 0, stake: 0, count: 0, pending: 0 };
     days[d].profit += effectiveProfit(b);
@@ -63,17 +62,15 @@ router.get('/calendar', (req, res) => {
     d.stake = round2(d.stake);
   }
   res.json({ month, days: Object.values(days).sort((a, b) => (a.date < b.date ? -1 : 1)) });
-});
+}));
 
 // Agregado por mes para un año (?year=YYYY)
-router.get('/monthly', (req, res) => {
+router.get('/monthly', wrap(async (req, res) => {
   const year = String(req.query.year || new Date().getFullYear());
-  const rows = db
-    .prepare("SELECT * FROM bets WHERE user_id = ? AND substr(placed_at, 1, 4) = ?")
-    .all(req.user.id, year);
+  const r = await query('SELECT * FROM bets WHERE user_id = $1 AND substr(placed_at, 1, 4) = $2', [req.user.id, year]);
 
   const months = {};
-  for (const b of rows) {
+  for (const b of r.rows) {
     const m = (b.placed_at || '').slice(0, 7);
     if (!months[m]) months[m] = { month: m, profit: 0, stake: 0, count: 0 };
     months[m].profit += effectiveProfit(b);
@@ -85,7 +82,7 @@ router.get('/monthly', (req, res) => {
     m.stake = round2(m.stake);
   }
   res.json({ year, months: Object.values(months).sort((a, b) => (a.month < b.month ? -1 : 1)) });
-});
+}));
 
 function round2(n) {
   return Math.round((Number(n) + Number.EPSILON) * 100) / 100;

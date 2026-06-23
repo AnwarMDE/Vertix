@@ -1,46 +1,61 @@
-import { DatabaseSync } from 'node:sqlite';
-import { fileURLToPath } from 'node:url';
-import path from 'node:path';
+// Capa de base de datos — PostgreSQL (Neon) vía node-postgres.
+// La conexión se toma de DATABASE_URL (Render env var en producción,
+// backend/.env en local). Los datos son PERMANENTES (a diferencia del
+// SQLite anterior, que se borraba en cada reinicio del host gratuito).
+import pg from 'pg';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = process.env.DB_PATH
-  ? path.resolve(process.cwd(), process.env.DB_PATH)
-  : path.join(__dirname, '..', 'surebets.db');
+const { Pool } = pg;
 
-export const db = new DatabaseSync(dbPath);
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error('❌ Falta DATABASE_URL. Defínela en Render (Environment) o en backend/.env');
+}
 
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA foreign_keys = ON;');
+export const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    email         TEXT UNIQUE NOT NULL,
-    name          TEXT,
-    password_hash TEXT NOT NULL,
-    created_at    TEXT NOT NULL DEFAULT (datetime('now'))
-  );
+// Helper de consulta.
+export const query = (text, params) => pool.query(text, params);
 
-  CREATE TABLE IF NOT EXISTS bets (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id         INTEGER NOT NULL,
-    event           TEXT NOT NULL,
-    sport           TEXT,
-    market          TEXT,
-    legs            TEXT NOT NULL,             -- JSON: [{ bookmaker, outcome, odds, stake }]
-    total_stake     REAL NOT NULL,
-    expected_profit REAL NOT NULL,             -- beneficio garantizado calculado
-    profit_pct      REAL NOT NULL,             -- % de beneficio sobre el stake
-    status          TEXT NOT NULL DEFAULT 'pending',  -- pending | won | lost | void
-    actual_profit   REAL,                      -- beneficio real una vez liquidada
-    placed_at       TEXT NOT NULL,             -- YYYY-MM-DD (lo usa el calendario)
-    settled_at      TEXT,
-    notes           TEXT,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-  );
+// Envoltura para capturar errores de handlers async en Express 4.
+export const wrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-  CREATE INDEX IF NOT EXISTS idx_bets_user_date ON bets(user_id, placed_at);
-`);
+// Crea el esquema si no existe (idempotente).
+export async function initDb() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id            SERIAL PRIMARY KEY,
+      email         TEXT UNIQUE NOT NULL,
+      name          TEXT,
+      password_hash TEXT NOT NULL,
+      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
 
-export default db;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS bets (
+      id              SERIAL PRIMARY KEY,
+      user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      event           TEXT NOT NULL,
+      sport           TEXT,
+      market          TEXT,
+      legs            TEXT NOT NULL,                  -- JSON: [{ bookmaker, outcome, odds, stake }]
+      total_stake     DOUBLE PRECISION NOT NULL,
+      expected_profit DOUBLE PRECISION NOT NULL,
+      profit_pct      DOUBLE PRECISION NOT NULL,
+      status          TEXT NOT NULL DEFAULT 'pending',
+      actual_profit   DOUBLE PRECISION,
+      placed_at       TEXT NOT NULL,                  -- YYYY-MM-DD (lo usa el calendario)
+      settled_at      TEXT,
+      notes           TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+  `);
+
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_bets_user_date ON bets(user_id, placed_at);');
+}
+
+export default pool;

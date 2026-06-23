@@ -1,7 +1,8 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 
-import './db.js';
+import { initDb } from './db.js';
 import authRoutes from './routes/auth.routes.js';
 import betRoutes from './routes/bets.routes.js';
 import statsRoutes from './routes/stats.routes.js';
@@ -11,7 +12,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get('/api/health', (req, res) => res.json({ ok: true, ts: Date.now() }));
+app.get('/api/health', (req, res) => res.json({ ok: true, db: 'postgres', ts: Date.now() }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/bets', betRoutes);
@@ -34,6 +35,14 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`✅ Surebets API escuchando en http://localhost:${PORT}`);
-});
+
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`✅ Vertix API (PostgreSQL) escuchando en http://localhost:${PORT}`);
+    });
+  })
+  .catch((e) => {
+    console.error('❌ No se pudo inicializar la base de datos:', e.message);
+    process.exit(1);
+  });
