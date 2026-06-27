@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api.js';
-import { todayISO } from '../lib/format.js';
+import { todayISO, money, pnlClass } from '../lib/format.js';
 import { useT } from '../settings.jsx';
 import { IconCheck } from '../components/icons.jsx';
 
@@ -10,48 +10,53 @@ const STATUSES = ['pending', 'won', 'lost', 'void'];
 
 export default function AddBet() {
   const t = useT();
-  const [event, setEvent] = useState('');
-  const [sport, setSport] = useState('');
-  const [market, setMarket] = useState('');
   const [placedAt, setPlacedAt] = useState(todayISO());
-  const [stake, setStake] = useState('');
   const [status, setStatus] = useState('pending');
-  const [profit, setProfit] = useState('');
-  const [notes, setNotes] = useState('');
+  const [stake, setStake] = useState('');
+  const [odds, setOdds] = useState('');
+  const [boost, setBoost] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
-  const isVoid = status === 'void';
-  const settled = status === 'won' || status === 'lost';
+  const s = num(stake) || 0;
+  const o = num(odds) || 0;
+  const b = num(boost) || 0;
+  const needsOdds = status === 'pending' || status === 'won';
+
+  // Beneficio automático según la cuota, el aumento y el estado.
+  const profit = useMemo(() => {
+    if (status === 'void') return 0;
+    if (status === 'lost') return -s;
+    if (!(s > 0) || !(o > 1)) return null; // won/pending necesitan cuota válida
+    const base = s * (o - 1);
+    return Math.round(base * (1 + b / 100) * 100) / 100;
+  }, [status, s, o, b]);
 
   async function save() {
     setError('');
-    if (!event.trim()) { setError(t('add.needEvent')); return; }
-    const totalStake = num(stake) || 0;
-    if (!(totalStake > 0)) { setError(t('add.needStake')); return; }
+    if (!(s > 0)) { setError(t('add.needStake')); return; }
+    if (needsOdds && !(o > 1)) { setError(t('add.needOdds')); return; }
 
-    const p = isVoid ? 0 : (num(profit) || 0);
+    const p = profit == null ? 0 : profit;
+    const event = o > 1 ? `${t('add.betWord')} @${o}` : t('add.betWord');
     const payload = {
-      event: event.trim(),
-      sport: sport.trim() || null,
-      market: market.trim() || null,
-      legs: [],
-      total_stake: totalStake,
+      event,
+      legs: o > 1 ? [{ bookmaker: '', outcome: '', odds: o, stake: s }] : [],
+      total_stake: s,
       expected_profit: p,
       placed_at: placedAt,
       status,
-      notes: notes.trim() || null,
+      notes: b > 0 ? `+${b}% aumento` : null,
     };
-    if (settled) payload.actual_profit = p;
-    if (isVoid) payload.actual_profit = 0;
+    if (status === 'won' || status === 'lost') payload.actual_profit = p;
+    if (status === 'void') payload.actual_profit = 0;
 
     setSaving(true);
     try {
       await api.createBet(payload);
       setSaved(true);
-      setEvent(''); setSport(''); setMarket(''); setStake(''); setProfit(''); setNotes('');
-      setStatus('pending'); setPlacedAt(todayISO());
+      setStake(''); setOdds(''); setBoost(''); setStatus('pending'); setPlacedAt(todayISO());
     } catch (err) {
       setError(err.message);
     } finally {
@@ -60,44 +65,28 @@ export default function AddBet() {
   }
 
   return (
-    <div className="stack" style={{ maxWidth: 620, margin: '0 auto', width: '100%' }}>
+    <div className="stack" style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
       <div className="panel">
         <div className="panel__head"><h2>{t('add.title')}</h2></div>
         <div className="panel__body stack">
           {error && <div className="alert alert--error">{error}</div>}
           {saved && (
             <div className="alert alert--ok">
-              {t('add.saved')} <Link to="/apuestas">{t('add.seeBets')}</Link>
+              {t('add.saved')} <Link to="/calendario">{t('add.seeBets')}</Link>
             </div>
           )}
 
           <div className="field">
-            <label>{t('add.event')}</label>
-            <input className="input" placeholder={t('add.eventPh')} value={event}
-              onChange={(e) => { setEvent(e.target.value); setSaved(false); }} />
-          </div>
-
-          <div className="row" style={{ gap: 16 }}>
-            <div className="field grow">
-              <label>{t('add.sport')}</label>
-              <input className="input" value={sport} onChange={(e) => setSport(e.target.value)} placeholder="Fútbol, Tenis…" />
-            </div>
-            <div className="field grow">
-              <label>{t('add.date')}</label>
-              <input className="input" type="date" value={placedAt} onChange={(e) => setPlacedAt(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="field">
-            <label>{t('add.market')}</label>
-            <input className="input" placeholder={t('add.marketPh')} value={market} onChange={(e) => setMarket(e.target.value)} />
+            <label>{t('add.date')}</label>
+            <input className="input" type="date" value={placedAt}
+              onChange={(e) => { setPlacedAt(e.target.value); setSaved(false); }} />
           </div>
 
           <div className="field">
             <label>{t('add.status')}</label>
             <div className="segmented">
-              {STATUSES.map((s) => (
-                <button key={s} className={status === s ? 'active' : ''} onClick={() => setStatus(s)}>{t(`st.${s}`)}</button>
+              {STATUSES.map((st) => (
+                <button key={st} className={status === st ? 'active' : ''} onClick={() => { setStatus(st); setSaved(false); }}>{t(`st.${st}`)}</button>
               ))}
             </div>
           </div>
@@ -109,20 +98,26 @@ export default function AddBet() {
                 onChange={(e) => { setStake(e.target.value); setSaved(false); }} />
             </div>
             <div className="field grow">
-              <label>{t('add.profit')}</label>
-              <input className="input num" inputMode="decimal" placeholder={isVoid ? '0' : '12.50'} value={isVoid ? '0' : profit}
-                disabled={isVoid} onChange={(e) => { setProfit(e.target.value); setSaved(false); }} />
+              <label>{t('add.odds')}</label>
+              <input className="input num" inputMode="decimal" placeholder="2.10" value={odds}
+                disabled={!needsOdds} onChange={(e) => { setOdds(e.target.value); setSaved(false); }} />
             </div>
           </div>
-          {!isVoid && (
-            <div className="field__hint muted" style={{ fontSize: '0.8rem', marginTop: -6 }}>
-              {settled ? t('add.profitHintSettled') : t('add.profitHintPending')}
+
+          {needsOdds && (
+            <div className="field">
+              <label>{t('add.boost')}</label>
+              <input className="input num" inputMode="decimal" placeholder="0" value={boost}
+                onChange={(e) => { setBoost(e.target.value); setSaved(false); }} />
+              <div className="muted" style={{ fontSize: '0.8rem', marginTop: 4 }}>{t('add.boostHint')}</div>
             </div>
           )}
 
-          <div className="field">
-            <label>{t('add.notes')}</label>
-            <input className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <div className="addbet-result">
+            <span className="muted">{t('add.computedProfit')}</span>
+            <span className={`addbet-result__val ${profit == null ? '' : pnlClass(profit)}`}>
+              {profit == null ? '—' : money(profit, { sign: true })}
+            </span>
           </div>
 
           <button className="btn btn--primary" onClick={save} disabled={saving}>

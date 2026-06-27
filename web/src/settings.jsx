@@ -15,6 +15,9 @@ const DICT = {
     'add.notes': 'Notas (opcional)', 'add.save': 'Guardar apuesta', 'add.saving': 'Guardando…',
     'add.saved': 'Apuesta guardada.', 'add.seeBets': 'Ver en mis apuestas →',
     'add.needEvent': 'Pon un nombre de evento', 'add.needStake': 'El importe debe ser mayor que 0',
+    'add.odds': 'Cuota', 'add.boost': 'Porcentaje de aumento (%)',
+    'add.boostHint': 'Opcional: si la casa te ofrece un aumento de ganancias (boost)',
+    'add.computedProfit': 'Beneficio calculado', 'add.betWord': 'Apuesta', 'add.needOdds': 'Pon una cuota válida (mayor que 1)',
     'action.newSurebet': 'Nueva surebet', 'action.viewAll': 'Ver todas', 'common.account': 'Mi cuenta',
     'action.logout': 'Cerrar sesión',
 
@@ -80,6 +83,9 @@ const DICT = {
     'add.notes': 'Notes (optional)', 'add.save': 'Save bet', 'add.saving': 'Saving…',
     'add.saved': 'Bet saved.', 'add.seeBets': 'See in my bets →',
     'add.needEvent': 'Enter an event name', 'add.needStake': 'Stake must be greater than 0',
+    'add.odds': 'Odds', 'add.boost': 'Boost percentage (%)',
+    'add.boostHint': 'Optional: if the bookmaker offers a profit boost',
+    'add.computedProfit': 'Calculated profit', 'add.betWord': 'Bet', 'add.needOdds': 'Enter valid odds (greater than 1)',
     'action.newSurebet': 'New surebet', 'action.viewAll': 'View all', 'common.account': 'My account',
     'action.logout': 'Log out',
 

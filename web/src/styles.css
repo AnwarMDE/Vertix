@@ -350,6 +350,8 @@ table.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .admin-user__email { font-size: 0.78rem; color: var(--muted); }
 .admin-user__date { font-size: 0.78rem; color: var(--muted); font-family: var(--font-mono, monospace); white-space: nowrap; }
 @media (max-width: 420px) { .admin-stat__n { font-size: 1.2rem; } }
+.addbet-result { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); padding: var(--s4); background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+.addbet-result__val { font-family: var(--font-mono, monospace); font-size: 1.35rem; font-weight: 700; color: var(--ink); }
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--muted); }
 .faint { color: var(--faint); }
