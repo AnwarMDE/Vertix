@@ -15,6 +15,8 @@ export const pool = new Pool({
   connectionString,
   ssl: { rejectUnauthorized: false },
   max: 5,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 5_000,
 });
 
 // Helper de consulta.

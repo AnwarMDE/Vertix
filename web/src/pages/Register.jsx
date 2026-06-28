@@ -34,33 +34,41 @@ export default function Register() {
 
   return (
     <div className="auth">
-      <div className="auth__card panel">
-        <div className="panel__body">
-          <div className="auth__brand"><Brand /></div>
-          <h2 className="auth__title">{t('auth.signupTitle')}</h2>
-          <p className="auth__sub">{t('auth.signupSub')}</p>
-          <form className="stack" onSubmit={onSubmit}>
-            {error && <div className="alert alert--error">{error}</div>}
-            <div className="field">
-              <label htmlFor="name">{t('auth.name')}</label>
-              <input id="name" className="input" type="text" autoComplete="name"
-                value={name} onChange={(e) => setName(e.target.value)} placeholder={t('auth.name')} />
-            </div>
-            <div className="field">
-              <label htmlFor="email">{t('auth.email')}</label>
-              <input id="email" className="input" type="email" autoComplete="email" required
-                value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@email.com" />
-            </div>
-            <div className="field">
-              <label htmlFor="pw">{t('auth.password')}</label>
-              <input id="pw" className="input" type="password" autoComplete="new-password" required
-                value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.minPass')} />
-            </div>
-            <button className="btn btn--primary btn--block" disabled={busy}>
-              {busy ? t('auth.creating') : t('auth.create')}
-            </button>
-          </form>
-          <p className="auth__alt">{t('auth.hasAccount')} <Link to="/login">{t('auth.login')}</Link></p>
+      <div className="auth__brand-panel">
+        <div className="auth__panel-brand"><Brand /></div>
+        <p className="auth__panel-headline">Registra. Calcula.<br /><span>Gana.</span></p>
+        <p className="auth__panel-sub">Tu tracker de surebets para mantener el control de cada operacion y visualizar tu rendimiento mes a mes.</p>
+        <p className="auth__panel-foot">Vertix Surebet Tracker</p>
+      </div>
+      <div className="auth__form-panel">
+        <div className="auth__card panel">
+          <div className="panel__body">
+            <div className="auth__brand"><Brand /></div>
+            <h2 className="auth__title">{t('auth.signupTitle')}</h2>
+            <p className="auth__sub">{t('auth.signupSub')}</p>
+            <form className="stack" onSubmit={onSubmit}>
+              {error && <div className="alert alert--error">{error}</div>}
+              <div className="field">
+                <label htmlFor="name">{t('auth.name')}</label>
+                <input id="name" className="input" type="text" autoComplete="name"
+                  value={name} onChange={(e) => setName(e.target.value)} placeholder={t('auth.name')} />
+              </div>
+              <div className="field">
+                <label htmlFor="email">{t('auth.email')}</label>
+                <input id="email" className="input" type="email" autoComplete="email" required
+                  value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tucorreo@email.com" />
+              </div>
+              <div className="field">
+                <label htmlFor="pw">{t('auth.password')}</label>
+                <input id="pw" className="input" type="password" autoComplete="new-password" required
+                  value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('auth.minPass')} />
+              </div>
+              <button className="btn btn--primary btn--block" disabled={busy}>
+                {busy ? t('auth.creating') : t('auth.create')}
+              </button>
+            </form>
+            <p className="auth__alt">{t('auth.hasAccount')} <Link to="/login">{t('auth.login')}</Link></p>
+          </div>
         </div>
       </div>
     </div>

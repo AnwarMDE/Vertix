@@ -1,6 +1,14 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ JWT_SECRET no definido en producción. Saliendo.');
+    process.exit(1);
+  }
+  console.warn('⚠️  JWT_SECRET no definido — usando secreto de desarrollo. No usar en producción.');
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-me';
 const JWT_EXPIRES = '30d';
 

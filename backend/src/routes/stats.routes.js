@@ -16,29 +16,50 @@ function effectiveProfit(b) {
 }
 
 router.get('/summary', wrap(async (req, res) => {
-  const r = await query('SELECT * FROM bets WHERE user_id = $1', [req.user.id]);
-  const rows = r.rows;
   const ym = new Date().toISOString().slice(0, 7);
 
-  let totalProfit = 0, monthProfit = 0, totalStaked = 0, pending = 0, settled = 0, won = 0;
-  for (const b of rows) {
-    const p = effectiveProfit(b);
-    totalProfit += p;
-    totalStaked += b.total_stake;
-    if ((b.placed_at || '').slice(0, 7) === ym) monthProfit += p;
-    if (b.status === 'pending') pending += 1; else settled += 1;
-    if (b.status === 'won') won += 1;
-  }
+  const r = await query(`
+    SELECT
+      COUNT(*)::int                                                              AS count,
+      COUNT(*) FILTER (WHERE status = 'pending')::int                           AS pending,
+      COUNT(*) FILTER (WHERE status <> 'pending')::int                          AS settled,
+      COUNT(*) FILTER (WHERE status = 'won')::int                               AS won,
+      COALESCE(SUM(total_stake), 0)                                             AS total_staked,
+      COALESCE(SUM(
+        CASE
+          WHEN status = 'void'    THEN 0
+          WHEN status = 'pending' THEN expected_profit
+          ELSE COALESCE(actual_profit, expected_profit)
+        END
+      ), 0)                                                                     AS total_profit,
+      COALESCE(SUM(
+        CASE WHEN substr(placed_at, 1, 7) = $2 THEN
+          CASE
+            WHEN status = 'void'    THEN 0
+            WHEN status = 'pending' THEN expected_profit
+            ELSE COALESCE(actual_profit, expected_profit)
+          END
+        ELSE 0 END
+      ), 0)                                                                     AS month_profit
+    FROM bets
+    WHERE user_id = $1
+  `, [req.user.id, ym]);
+
+  const row = r.rows[0];
+  const totalProfit = round2(Number(row.total_profit));
+  const totalStaked = round2(Number(row.total_staked));
+  const settled = row.settled;
+  const won = row.won;
 
   res.json({
-    count: rows.length,
-    pending,
+    count: row.count,
+    pending: row.pending,
     settled,
     won,
     winRate: settled ? round2((won / settled) * 100) : 0,
-    totalStaked: round2(totalStaked),
-    totalProfit: round2(totalProfit),
-    monthProfit: round2(monthProfit),
+    totalStaked,
+    totalProfit,
+    monthProfit: round2(Number(row.month_profit)),
     roi: totalStaked ? round2((totalProfit / totalStaked) * 100) : 0,
   });
 }));
