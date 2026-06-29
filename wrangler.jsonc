@@ -3,6 +3,12 @@
   // Sirve los archivos de web/dist; las peticiones a estáticos son gratis e ilimitadas.
   "name": "vertix",
   "compatibility_date": "2026-06-28",
+  // Compila la web antes de desplegar. Así `wrangler deploy` genera web/dist
+  // por sí mismo, aunque el "Build command" del panel esté vacío.
+  "build": {
+    "command": "npm install && npm run build",
+    "cwd": "web"
+  },
   "assets": {
     "directory": "./web/dist",
     // Las rutas desconocidas devuelven index.html (enrutado SPA de React Router).
